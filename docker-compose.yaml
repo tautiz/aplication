@@ -1,0 +1,69 @@
+version: "3.5"
+
+networks:
+  traefik:
+    external: true
+
+services:
+  traefik:
+    image: library/traefik:2.3
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web-secure.address=:443
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - traefik
+
+  mysql:
+    image: "mysql/mysql-server:8.0"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./docker/mysql:/docker-entrypoint-initdb.d
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb_file_per_table=1
+      --max_allowed_packet=64M
+      --explicit_defaults_for_timestamp
+      --default-authentication-plugin=mysql_native_password
+    ports:
+      - "127.0.0.1:3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_USER: "app_user"
+      MYSQL_PASSWORD: "app_pass"
+      MYSQL_DATABASE: "application"
+
+  app:
+    build:
+      context: .
+      target: development
+    environment:
+      APPLICATION_ENV: "development"
+      APACHE_SERVER_NAME: "application"
+      PHP_IDE_CONFIG: "serverName=application.local"
+      APACHE_LOG_DIR: "/var/log/apache2"
+      XDEBUG_CONFIG: "remote_host=host.docker.internal"
+      COMPOSER_MEMORY_LIMIT: -1
+    volumes:
+      - ./:/app:cached
+    depends_on:
+      - mysql
+    ports:
+      - 8081:80
+    labels:
+      - "traefik.http.routers.application.rule=Host(`application.local`)"
+      - "traefik.docker.network=traefik"
+      - "traefik.enable=true"
+    networks:
+      - default
+      - traefik
+
+
