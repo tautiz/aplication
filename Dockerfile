@@ -8,10 +8,12 @@ RUN apt-get update -y &&\
   a2enmod allowmethods rewrite &&\
   apt-get autoremove -y &&\
   apt-get clean &&\
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* &&\
-  touch /app/logs/app.log
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /app
+
+RUN   mkdir /app/logs/ &&\
+      touch /app/logs/app.log
 
 # -----------------------------------------------
 
